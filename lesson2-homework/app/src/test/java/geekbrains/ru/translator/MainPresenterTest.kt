@@ -10,23 +10,31 @@ import geekbrains.ru.translator.rx.SchedulerProvider
 import geekbrains.ru.translator.view.base.View
 import geekbrains.ru.translator.view.main.MainInteractor
 import geekbrains.ru.translator.view.main.MainPresenterImpl
+import io.reactivex.Observable
+import io.reactivex.android.plugins.RxAndroidPlugins
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import org.mockito.Mock
 import org.mockito.Mockito
+import org.mockito.Mockito.times
+import org.mockito.MockitoAnnotations
 import java.lang.NullPointerException
 
 class MainPresenterTest {
-    private val remoteRepository: Repository<List<DataModel>> = RepositoryImplementation(DataSourceRemote())
-    private val localRepository: Repository<List<DataModel>> = RepositoryImplementation(DataSourceLocal())
-    private val interactor = MainInteractor(remoteRepository,localRepository)
-    private val compositeDisposable: CompositeDisposable = CompositeDisposable()
+    private val remoteRepository = RepositoryImplementation(DataSourceRemote())
+    private val localRepository = RepositoryImplementation(DataSourceLocal())
+    private var interactor= MainInteractor(remoteRepository,localRepository)
+    private var compositeDisposable: CompositeDisposable = CompositeDisposable()
     private val schedulerProvider: SchedulerProvider = SchedulerProvider()
     private lateinit var presenter:MainPresenterImpl<AppState, View>
     private lateinit var view:View
     @Before
     fun setUp(){
+        RxAndroidPlugins.setInitMainThreadSchedulerHandler({scheduler -> Schedulers.trampoline()})
+        compositeDisposable=Mockito.mock(CompositeDisposable::class.java)
         presenter = MainPresenterImpl(interactor,compositeDisposable,schedulerProvider)
         view=Mockito.mock(View::class.java)
     }
@@ -36,24 +44,17 @@ class MainPresenterTest {
         presenter.getData("",true)
         Mockito.verify(view).renderData(AppState.Loading(null))
     }
-    @Test(expected = NullPointerException::class)
+    @Test
     fun detachView_Test(){
         presenter.attachView(view)
         presenter.detachView(view)
         Mockito.verify(compositeDisposable).clear()
-        presenter.getData("",true)
     }
     @Test
     fun getData_Test(){
         presenter.attachView(view)
-        var appState:AppState=Mockito.mock(AppState::class.java)
-        Mockito.`when`(interactor.getData("",true)).thenReturn(remoteRepository.getData("").map { appState = AppState.Success(it)
-            appState})
         presenter.getData("",true)
-        val inOrder = Mockito.inOrder(schedulerProvider)
-        inOrder.verify(schedulerProvider).io()
-        inOrder.verify(schedulerProvider).ui()
-        Mockito.verify(view).renderData(appState)
+        Mockito.verify(view).renderData(AppState.Loading(null))
     }
 
 }

@@ -17,7 +17,6 @@ android/libs/x86/
 android/gen/
 
 .idea
-
 com_crashlytics_export_strings.xml
 
 ## Gradle
